@@ -341,6 +341,7 @@ if (nonOpt.length !== 5) return;
       finalSubmit.textContent = '正在提交…';
 
       let submitted = false;
+      let submitError = '';
       try {
         const choices = getSelectedDishes();
         await apiRequest('submit', {
@@ -361,16 +362,17 @@ if (nonOpt.length !== 5) return;
         submitted = true;
       } catch (error) {
         submitted = false;
+        submitError = error?.message || String(error);
         console.warn('Submit failed:', error);
       }
 
       document.querySelector('#resultCard').textContent = result;
       document.querySelector('#resultMessage').textContent = submitted
         ? '你的名字、业务阶段、当前问题和 5 道选择，已经自动进入后台表格。'
-        : '这份点菜单已经生成，但暂时没有写入后台。请先复制一份备份，我会尽快补录。';
+        : '这份点菜单已经生成，但暂时没有写入后台。错误原因：' + (submitError || '腾讯云接口没有返回具体原因。');
       document.querySelector('#resultNote').textContent = submitted
         ? '提交成功，本页不会公开你的个人信息。'
-        : '后台接口正在切换到腾讯云，正式跑通后会自动收集。';
+        : '请先复制一份备份，把错误原因截图发给我，我会继续处理。';
       document.querySelector('#formView').classList.add('hidden');
       document.querySelector('#resultView').classList.remove('hidden');
       localStorage.setItem('topic-menu-last-result', result);
