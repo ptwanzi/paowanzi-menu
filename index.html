@@ -324,6 +324,7 @@ if (nonOpt.length !== 5) return;
       finalSubmit.textContent = '正在提交…';
 
       let submitted = false;
+      let submitError = '';
       try {
         const choices = getSelectedDishes();
         const { error } = await sb.from('submissions').insert({
@@ -335,20 +336,22 @@ if (nonOpt.length !== 5) return;
           choice_3: choices[2]?.title || '',
           choice_4: choices[3]?.title || '',
           choice_5: choices[4]?.title || '',
-          customTopic: customTopic.trim()
+          custom_topic: customTopic.trim()
         });
         submitted = !error;
+        if (error) submitError = [error.message, error.details, error.hint].filter(Boolean).join(' ');
       } catch (error) {
         submitted = false;
+        submitError = error?.message || String(error);
       }
 
       document.querySelector('#resultCard').textContent = result;
       document.querySelector('#resultMessage').textContent = submitted
         ? '你的名字、业务阶段、当前问题和 5 道选择，已经自动进入后台表格。'
-        : '提交没有写入后台。你可以先复制一份结果备份，然后检查 Supabase 权限设置。';
+        : '提交没有写入后台。错误原因：' + (submitError || 'Supabase 拒绝写入，但没有返回详细信息。');
       document.querySelector('#resultNote').textContent = submitted
         ? '提交成功，本页不会公开你的个人信息。'
-        : '如果线上也失败，通常是 Supabase 的 RLS 权限没有放开 insert。';
+        : '请把上面的错误原因发给我，我就能精确判断是哪一项设置卡住了。';
       document.querySelector('#formView').classList.add('hidden');
       document.querySelector('#resultView').classList.remove('hidden');
       localStorage.setItem('topic-menu-last-result', result);
