@@ -91,7 +91,6 @@
     @media (max-width: 720px) { .hero { min-height: 460px; padding-bottom: 50px; } .brand-logo { width: 160px; } .eyebrow { margin-top: 54px; } .intro { grid-template-columns: 1fr; gap: 12px; } .menu-grid { grid-template-columns: 1fr; gap: 14px; } .dish { min-height: 0; padding: 18px; grid-template-columns: 42px 1fr; gap: 12px; } .dish-number { width: 38px; height: 38px; font-size: 13px; } .counterbar { padding: 10px 10px 10px 16px; gap: 10px; } .total { display: none; } .count-copy { gap: 6px; } .submit-btn { padding: 11px 16px; font-size: 13px; } .result-actions { grid-template-columns: 1fr; } dialog { margin: 0 10px; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
   </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 </head>
 <body>
   <header class="hero">
@@ -151,9 +150,27 @@
 
   
 <script>
-    const SU = "https://qwomsvprkpoctqbjvxaz.supabase.co";
-    const SK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3b21zdnBya3BvY3RxYmp2eGF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyODgwOTAsImV4cCI6MjA2Njg2NDA5MH0.SKtIHQ0YONk4ej_mBeK1Z4x6qv90TqDkfRlOv9qUnX0";
-    const sb = supabase.createClient(SU, SK);
+    const API_BASE_URL = "PASTE_TENCENT_CLOUD_API_URL_HERE";
+
+    async function apiRequest(action, options = {}) {
+      if (API_BASE_URL.includes('PASTE_TENCENT')) {
+        throw new Error('腾讯云接口地址还没有填入网站代码。');
+      }
+      const apiUrl = API_BASE_URL.replace(/\/$/, '') + '?action=' + encodeURIComponent(action);
+      const response = await fetch(apiUrl, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {})
+        }
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.ok === false) {
+        throw new Error(payload.error || `HTTP ${response.status}`);
+      }
+      return payload;
+    }
+
     const dishes = [
       { id: 1, tag: "定价底气", title: "为什么有些产品，反而越贵越好卖？", desc: "洞穿涨价的底层逻辑：看透高客单背后的“感知价值”，彻底跳出拼时长的低价泥沼。" },
       { id: 2, tag: "高客单本质", title: "为什么高价产品，不是卖一次课而是要卖一整条人生？", desc: "揭开高净值人群的付费真相：从“只卖一次课”升级为接住一整条人生的需求链，锁定长期商业价值。" },
@@ -324,34 +341,36 @@ if (nonOpt.length !== 5) return;
       finalSubmit.textContent = '正在提交…';
 
       let submitted = false;
-      let submitError = '';
       try {
         const choices = getSelectedDishes();
-        const { error } = await sb.from('submissions').insert({
+        await apiRequest('submit', {
+          method: 'POST',
+          body: JSON.stringify({
           name: data.nickname,
           role: data.role || '',
           challenge: data.challenge || '',
-          choice_1: choices[0]?.title || '',
-          choice_2: choices[1]?.title || '',
-          choice_3: choices[2]?.title || '',
-          choice_4: choices[3]?.title || '',
-          choice_5: choices[4]?.title || '',
-          custom_topic: customTopic.trim()
+            choices: choices.map((dish, index) => ({
+              rank: index + 1,
+              id: dish.id,
+              topic: dish.tag,
+              title: dish.title
+            })),
+            custom_topic: customTopic.trim()
+          })
         });
-        submitted = !error;
-        if (error) submitError = [error.message, error.details, error.hint].filter(Boolean).join(' ');
+        submitted = true;
       } catch (error) {
         submitted = false;
-        submitError = error?.message || String(error);
+        console.warn('Submit failed:', error);
       }
 
       document.querySelector('#resultCard').textContent = result;
       document.querySelector('#resultMessage').textContent = submitted
         ? '你的名字、业务阶段、当前问题和 5 道选择，已经自动进入后台表格。'
-        : '提交没有写入后台。错误原因：' + (submitError || 'Supabase 拒绝写入，但没有返回详细信息。');
+        : '这份点菜单已经生成，但暂时没有写入后台。请先复制一份备份，我会尽快补录。';
       document.querySelector('#resultNote').textContent = submitted
         ? '提交成功，本页不会公开你的个人信息。'
-        : '请把上面的错误原因发给我，我就能精确判断是哪一项设置卡住了。';
+        : '后台接口正在切换到腾讯云，正式跑通后会自动收集。';
       document.querySelector('#formView').classList.add('hidden');
       document.querySelector('#resultView').classList.remove('hidden');
       localStorage.setItem('topic-menu-last-result', result);

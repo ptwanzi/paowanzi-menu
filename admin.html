@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>泡腾丸子 - 点菜单管理</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     body { font-family: system-ui; max-width: 1200px; margin: 0 auto; padding: 20px; background: #faf5ea; color: #1c221e; }
@@ -36,14 +35,28 @@
   </table>
 
   <script>
-    const SU = "https://qwomsvprkpoctqbjvxaz.supabase.co";
-    const SK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3b21zdnBya3BvY3RxYmp2eGF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyODgwOTAsImV4cCI6MjA2Njg2NDA5MH0.SKtIHQ0YONk4ej_mBeK1Z4x6qv90TqDkfRlOv9qUnX0";
-    const sb = supabase.createClient(SU, SK);
+    const API_BASE_URL = "PASTE_TENCENT_CLOUD_API_URL_HERE";
+
+    async function apiRequest(action) {
+      if (API_BASE_URL.includes("PASTE_TENCENT")) {
+        throw new Error("腾讯云接口地址还没有填入 admin.html");
+      }
+      const apiUrl = API_BASE_URL.replace(/\/$/, "") + "?action=" + encodeURIComponent(action);
+      const response = await fetch(apiUrl);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.ok === false) {
+        throw new Error(payload.error || "加载失败");
+      }
+      return payload;
+    }
 
     async function load() {
-      const { data, error } = await sb.from("submissions").select("*").order("submitted_at", { ascending: false });
-      if (error || !data) {
-        document.getElementById("tbody").innerHTML = '<tr><td colspan="11" class="loading">加载失败，请刷新页面</td></tr>';
+      let data = [];
+      try {
+        const payload = await apiRequest("submissions");
+        data = payload.data || [];
+      } catch (error) {
+        document.getElementById("tbody").innerHTML = '<tr><td colspan="11" class="loading">加载失败：' + error.message + '</td></tr>';
         return;
       }
       document.getElementById("count").textContent = "共 " + data.length + " 份点单";
@@ -51,7 +64,7 @@
         document.getElementById("tbody").innerHTML = '<tr><td colspan="11" class="loading">还没有人点单</td></tr>';
         return;
       }
-      document.getElementById("tbody").innerHTML = data.map((r, i) => "<tr><td>" + (i + 1) + "</td><td>" + (r.name || "") + "</td><td>" + (r.role || "") + "</td><td>" + (r.challenge || "") + "</td><td>" + (r.choice_1 || "") + "</td><td>" + (r.choice_2 || "") + "</td><td>" + (r.choice_3 || "") + "</td><td>" + (r.choice_4 || "") + "</td><td>" + (r.choice_5 || "") + "</td><td>" + (r.custom_topic || r.customTopic || "") + "</td><td>" + new Date(r.submitted_at).toLocaleString("zh-CN") + "</td></tr>").join("");
+      document.getElementById("tbody").innerHTML = data.map((r, i) => "<tr><td>" + (i + 1) + "</td><td>" + (r.name || "") + "</td><td>" + (r.role || "") + "</td><td>" + (r.challenge || "") + "</td><td>" + (r.choice_1 || "") + "</td><td>" + (r.choice_2 || "") + "</td><td>" + (r.choice_3 || "") + "</td><td>" + (r.choice_4 || "") + "</td><td>" + (r.choice_5 || "") + "</td><td>" + (r.custom_topic || "") + "</td><td>" + new Date(r.submitted_at).toLocaleString("zh-CN") + "</td></tr>").join("");
     }
 
     function downloadCSV() {
