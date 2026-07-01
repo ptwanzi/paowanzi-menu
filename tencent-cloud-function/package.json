@@ -1,0 +1,8 @@
+{
+  "name": "paowanzi-menu-api",
+  "version": "1.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "@cloudbase/node-sdk": "latest"
+  }
+}

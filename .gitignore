@@ -1,5 +1,6 @@
-server.js
-Dockerfile
-.dockerignore
-package.json
+/server.js
+/Dockerfile
+/.dockerignore
+/package.json
 使用说明.md
+.DS_Store

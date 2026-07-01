@@ -24,9 +24,14 @@
 - 运行环境：`Node.js`
 - 触发方式：HTTP 访问
 
-把本文件夹里的两个文件上传进去：
+上传本文件夹里的 zip 包：
 
-- `index.js`
+- `paowanzi-menu-api.zip`
+
+HTTP 函数包内需要包含：
+
+- `scf_bootstrap`
+- `server.js`
 - `package.json`
 
 部署函数。
