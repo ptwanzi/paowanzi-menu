@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>泡腾丸子 - 点菜单管理</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui; max-width: 1200px; margin: 0 auto; padding: 20px; background: #faf5ea; color: #1c221e; }
+    h1 { color: #173328; font-size: 28px; }
+    .bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .btn { padding: 10px 20px; background: #ee6b3b; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; }
+    .btn:hover { background: #d45226; }
+    .count { color: #7a8178; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; background: #fffaf2; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e8e4d8; font-size: 13px; }
+    th { background: #173328; color: #fff; font-weight: 600; position: sticky; top: 0; }
+    tr:hover { background: #f7f0df; }
+    .loading { text-align: center; padding: 50px; color: #7a8178; }
+  </style>
+</head>
+<body>
+  <h1>泡腾丸子 点菜单管理</h1>
+  <div class="bar">
+    <span class="count" id="count">加载中...</span>
+    <button class="btn" onclick="downloadCSV()">下载 CSV</button>
+  </div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>名字</th><th>身份/阶段</th><th>目前问题</th>
+      <th>第1道</th><th>第2道</th><th>第3道</th><th>第4道</th><th>第5道</th>
+      <th>DIY</th><th>时间</th>
+    </tr></thead>
+    <tbody id="tbody"><tr><td colspan="11" class="loading">加载中...</td></tr></tbody>
+  </table>
+
+  <script>
+    const SU = "https://qwomsvprkpoctqbjvxaz.supabase.co";
+    const SK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3b21zdnBya3BvY3RxYmp2eGF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyODgwOTAsImV4cCI6MjA2Njg2NDA5MH0.SKtIHQ0YONk4ej_mBeK1Z4x6qv90TqDkfRlOv9qUnX0";
+    const sb = supabase.createClient(SU, SK);
+
+    async function load() {
+      const { data, error } = await sb.from("submissions").select("*").order("submitted_at", { ascending: false });
+      if (error || !data) {
+        document.getElementById("tbody").innerHTML = '<tr><td colspan="11" class="loading">加载失败，请刷新页面</td></tr>';
+        return;
+      }
+      document.getElementById("count").textContent = "共 " + data.length + " 份点单";
+      if (data.length === 0) {
+        document.getElementById("tbody").innerHTML = '<tr><td colspan="11" class="loading">还没有人点单</td></tr>';
+        return;
+      }
+      document.getElementById("tbody").innerHTML = data.map((r, i) => "<tr><td>" + (i + 1) + "</td><td>" + (r.name || "") + "</td><td>" + (r.role || "") + "</td><td>" + (r.challenge || "") + "</td><td>" + (r.choice_1 || "") + "</td><td>" + (r.choice_2 || "") + "</td><td>" + (r.choice_3 || "") + "</td><td>" + (r.choice_4 || "") + "</td><td>" + (r.choice_5 || "") + "</td><td>" + (r.customTopic || "") + "</td><td>" + new Date(r.submitted_at).toLocaleString("zh-CN") + "</td></tr>").join("");
+    }
+
+    function downloadCSV() {
+      const rows = document.querySelectorAll("table tbody tr");
+      let csv = "#,Name,Role,Challenge,Choice1,Choice2,Choice3,Choice4,Choice5,DIY,Time\n";
+      rows.forEach(row => {
+        const cells = row.querySelectorAll("td");
+        if (cells.length < 11) return;
+        csv += Array.from(cells).map(c => '"' + c.textContent.replace(/"/g, '""') + '"').join(",") + "\n";
+      });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = "泡腾丸子点单" + new Date().toISOString().slice(0, 10) + ".csv"; a.click();
+    }
+
+    load();
+    setInterval(load, 15000);
+  </script>
+</body>
+</html>
