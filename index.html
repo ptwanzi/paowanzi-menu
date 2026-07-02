@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#1e3328" />
-  <meta name="description" content="从 10 道主题菜中，选出你最愿意花 333 元听的 5 道。" />
-  <title>泡腾丸子的主题私房菜｜10 道高维商业菜单</title>
+  <meta name="description" content="从 10 道主题菜中选出最想听的 5 道，与 2 道基础必讲菜组成最终 7 场分享。" />
+  <title>泡腾丸子的主题私房菜｜10 道商业拆解菜单</title>
 <style>
     :root { --forest: #173328; --forest-2: #1e3d30; --cream: #f7f0df; --paper: #fffaf2; --ink: #1c221e; --muted: #7a8178; --orange: #ee6b3b; --orange-deep: #d45226; --lime: #cddd8b; --line: rgba(23, 51, 40, 0.1); --shadow-sm: 0 2px 8px rgba(23, 51, 40, 0.06); --shadow-md: 0 8px 30px rgba(23, 51, 40, 0.1); --shadow-lg: 0 20px 60px rgba(23, 51, 40, 0.14); }
     * { box-sizing: border-box; }
@@ -101,7 +101,7 @@
       </div>
       <p class="eyebrow">泡腾丸子的主题私房菜</p>
       <h1>10 道高维<br>商业菜单</h1>
-      <p class="hero-copy">假如每道分享价值 <strong>¥333</strong>，请选出你这一周最愿意买单的 <strong>5 道主题</strong>。你的选择，会直接决定这周优先分享什么。</p>
+      <p class="hero-copy">假如每道分享价值 <strong>¥333</strong>，请选出接下来 10 天里你最愿意买单的 <strong>5 道主题</strong>。这里只做价值排序，不收费、不扣款；票选前 5 道将与 2 道基础必讲菜组成最终 7 场分享。</p>
       <div class="rules" aria-label="点单规则">
         <span class="rule">10 选 5</span>
         
@@ -112,7 +112,7 @@
 
   <main>
     <section class="intro" aria-labelledby="menu-title">
-      <div><span class="kicker">THIS WEEK'S MENU</span><h2 id="menu-title">选出这周最想听的 5 道</h2></div>
+      <div><span class="kicker">10-DAY MENU</span><h2 id="menu-title">选出接下来最想听的 5 道</h2></div>
     </section>
     <section class="menu-grid" id="menuGrid" aria-label="主题菜单"></section>
   </main>
@@ -156,9 +156,11 @@
       if (API_BASE_URL.includes('PASTE_TENCENT')) {
         throw new Error('腾讯云接口地址还没有填入网站代码。');
       }
-      const apiUrl = API_BASE_URL.replace(/\/$/, '') + '?action=' + encodeURIComponent(action);
+      const cacheBuster = (options.method || 'GET').toUpperCase() === 'GET' ? '&_=' + Date.now() : '';
+      const apiUrl = API_BASE_URL.replace(/\/$/, '') + '?action=' + encodeURIComponent(action) + cacheBuster;
       const response = await fetch(apiUrl, {
         ...options,
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           ...(options.headers || {})
@@ -169,6 +171,16 @@
         throw new Error(payload.error || `HTTP ${response.status}`);
       }
       return payload;
+    }
+
+    async function submissionExists(name, choices) {
+      const payload = await apiRequest('submissions');
+      const expectedName = String(name || '').trim();
+      const expectedTitles = choices.map(choice => choice.title);
+      return (payload.data || []).some(record => {
+        if (String(record.name || '').trim() !== expectedName) return false;
+        return expectedTitles.every((title, index) => record['choice_' + (index + 1)] === title);
+      });
     }
 
     const dishes = [
@@ -287,7 +299,7 @@ if (nonOpt.length !== 5) return;
       const list = getSelectedDishes().map((d, i) => `${i + 1}. ${d.title}`).join('\n');
       const diy = customTopic.trim();
       const lines = [
-        `🍽️ 我的「泡腾丸子 10 道高维商业菜单」点菜单`,
+        `🍽️ 我的「泡腾丸子 10 道商业拆解菜单」点菜单`,
         `点菜人：${data.nickname}`,
         data.role ? `身份/阶段：${data.role}` : '',
         '', list, '',
@@ -342,8 +354,8 @@ if (nonOpt.length !== 5) return;
 
       let submitted = false;
       let submitError = '';
+      const choices = getSelectedDishes();
       try {
-        const choices = getSelectedDishes();
         await apiRequest('submit', {
           method: 'POST',
           body: JSON.stringify({
@@ -361,9 +373,15 @@ if (nonOpt.length !== 5) return;
         });
         submitted = true;
       } catch (error) {
-        submitted = false;
         submitError = error?.message || String(error);
-        console.warn('Submit failed:', error);
+        console.warn('Submit response failed, checking backend:', error);
+        try {
+          submitted = await submissionExists(data.nickname, choices);
+          if (submitted) submitError = '';
+        } catch (verifyError) {
+          submitted = false;
+          console.warn('Backend verification failed:', verifyError);
+        }
       }
 
       document.querySelector('#resultCard').textContent = result;
